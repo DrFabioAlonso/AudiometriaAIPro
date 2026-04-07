@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Audiometría AI Pro — Procesamiento con IA</title>
+    <meta name="description" content="Digitaliza audiometrías en papel con inteligencia artificial. Captura, analiza y genera informes clínicos automáticos.">
+    <meta name="theme-color" content="#0a0e27">
+    <link rel="manifest" href="manifest.json">
+    <link rel="icon"
+        href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><text x='0' y='14'>👂</text></svg>"
+        type="image/svg+xml">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <!-- Toast notifications -->
+    <div id="toast-container"></div>
+
+    <!-- Loading overlay for AI operations -->
+    <div id="loading-overlay" class="loading-overlay hidden">
+        <div class="loading-content">
+            <div class="ai-spinner">
+                <div class="spinner-ring"></div>
+                <div class="spinner-ring"></div>
+                <div class="spinner-ring"></div>
+                <span class="spinner-icon">🤖</span>
+            </div>
+            <p id="loading-text" class="loading-text">Analizando con Gemini...</p>
+            <p class="loading-subtitle">Esto puede tardar unos segundos</p>
+        </div>
+    </div>
+
+    <!-- App Container -->
+    <div id="app">
+        <!-- Top Bar -->
+        <header id="top-bar">
+            <div class="top-bar-left">
+                <span class="app-logo">👂</span>
+                <div>
+                    <h1 id="app-title">Audiometría AI Pro</h1>
+                    <span class="app-version">Powered by Gemini</span>
+                </div>
+            </div>
+            <button id="settings-btn" class="icon-btn" onclick="app.openSettings()" title="Configuración">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+            </button>
+        </header>
+
+        <!-- Pages Container -->
+        <main id="pages-container">
+
+            <!-- ===== PAGE 1: CAPTURE ===== -->
+            <section id="page-capture" class="page active">
+                <div class="page-header">
+                    <h2>Captura de Audiograma</h2>
+                    <p class="page-subtitle">Fotografía o carga la gráfica de audiometría en papel</p>
+                </div>
+
+                <!-- Empty state: no image loaded -->
+                <div id="capture-empty" class="capture-empty-state">
+                    <div class="capture-hero">
+                        <div class="hero-icon-wrapper">
+                            <span class="hero-icon">📷</span>
+                        </div>
+                        <p>Captura una audiometría para digitalizarla automáticamente con IA</p>
+                    </div>
+                    <div class="capture-buttons">
+                        <label class="capture-btn glass-card" id="btn-camera">
+                            <span class="capture-btn-icon">📷</span>
+                            <span class="capture-btn-label">Abrir Cámara</span>
+                            <span class="capture-btn-hint">Fotografía directa</span>
+                            <input type="file" accept="image/*" capture="environment" id="camera-input" hidden>
+                        </label>
+                        <label class="capture-btn glass-card" id="btn-gallery">
+                            <span class="capture-btn-icon">🖼️</span>
+                            <span class="capture-btn-label">Cargar Imagen</span>
+                            <span class="capture-btn-hint">Desde galería o archivos</span>
+                            <input type="file" accept="image/*" id="gallery-input" hidden>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Image loaded: preview + tools -->
+                <div id="capture-preview" class="hidden">
+                    <div class="preview-card glass-card">
+                        <canvas id="image-canvas"></canvas>
+                    </div>
+                    <div class="adjust-tools glass-card">
+                        <h3 class="tools-title">🎛️ Ajustes de Imagen</h3>
+                        <div class="tool-slider">
+                            <label>☀️ Brillo</label>
+                            <input type="range" id="brightness-slider" min="-100" max="100" value="0">
+                            <span id="brightness-value" class="slider-value">0</span>
+                        </div>
+                        <div class="tool-slider">
+                            <label>🔲 Contraste</label>
+                            <input type="range" id="contrast-slider" min="-100" max="100" value="0">
+                            <span id="contrast-value" class="slider-value">0</span>
+                        </div>
+                        <div class="tool-actions">
+                            <button onclick="app.rotateImage()" class="btn-tool">🔄 Rotar 90°</button>
+                            <button onclick="app.resetAdjustments()" class="btn-tool">↩️ Reset</button>
+                            <button onclick="app.changeImage()" class="btn-tool">📷 Cambiar</button>
+                        </div>
+                    </div>
+                    <button id="analyze-btn" onclick="app.analyzeWithAI()" class="btn-primary btn-large btn-glow">
+                        <span class="btn-icon">🤖</span>
+                        <span>Analizar con Gemini</span>
+                    </button>
+                </div>
+            </section>
+
+            <!-- ===== PAGE 2: RESULTS ===== -->
+            <section id="page-results" class="page">
+                <div class="page-header">
+                    <h2>Resultados Audiométricos</h2>
+                    <p class="page-subtitle">Verifica los valores y calcula el análisis completo</p>
+                </div>
+
+                <!-- Patient data -->
+                <div class="glass-card section-card">
+                    <h3>📋 Datos del Paciente</h3>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="history-number">Nº de Historia</label>
+                            <input type="text" id="history-number" placeholder="Ej. 12345">
+                        </div>
+                        <div class="form-group">
+                            <label for="audiometry-date">Fecha</label>
+                            <input type="date" id="audiometry-date">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Editable values table -->
+                <div class="glass-card section-card">
+                    <h3>🎧 Umbrales Auditivos (dB HL)</h3>
+                    <p class="section-hint">Los valores pueden ser editados manualmente antes de calcular</p>
+                    <div class="input-grid-scroll">
+                        <div class="input-grid">
+                            <div class="grid-header">
+                                <label></label>
+                                <label>250</label><label>500</label><label>1000</label>
+                                <label>2000</label><label>3000</label><label>4000</label><label>8000</label>
+                            </div>
+                            <div class="input-row" data-ear="od" data-via="va">
+                                <label class="row-label label-od">OD VA</label>
+                                <input type="number" id="va-od-250" value="0" min="-10" max="120" step="5">
+                                <input type="number" id="va-od-500" value="0" min="-10" max="120" step="5">
+                                <input type="number" id="va-od-1000" value="0" min="-10" max="120" step="5">
+                                <input type="number" id="va-od-2000" value="0" min="-10" max="120" step="5">
+                                <input type="number" id="va-od-3000" value="0" min="-10" max="120" step="5">
+                                <input type="number" id="va-od-4000" value="0" min="-10" max="120" step="5">
+                                <input type="number" id="va-od-8000" value="0" min="-10" max="120" step="5">
+                            </div>
+                            <div class="input-row" data-ear="od" data-via="vo">
+                                <label class="row-label label-od">OD VO</label>
+                                <input type="number" id="vo-od-250" value="0" min="-10" max="120" step="5">
+                                <input type="number" id="vo-od-500" value="0" min="-10" max="120" step="5">
+                                <input type="number" id="vo-od-1000" value="0" min="-10" max="120" step="5">
+                                <input type="number" id="vo-od-2000" value="0" min="-10" max="120" step="5">
+                                <input type="number" id="vo-od-3000" value="0" min="-10" max="120" step="5">
+                                <input type="number" id="vo-od-4000" value="0" min="-10" max="120" step="5">
+                                <input type="number" id="vo-od-8000" value="0" min="-10" max="120" step="5">
+                            </div>
+                            <div class="grid-separator"></div>
+                            <div class="input-row" data-ear="oi" data-via="va">
+                                <label class="row-label label-oi">OI VA</label>
+                                <input type="number" id="va-oi-250" value="0" min="-10" max="120" step="5">
+                                <input type="number" id="va-oi-500" value="0" min="-10" max="120" step="5">
+                                <input type="number" id="va-oi-1000" value="0" min="-10" max="120" step="5">
+                                <input type="number" id="va-oi-2000" value="0" min="-10" max="120" step="5">
+                                <input type="number" id="va-oi-3000" value="0" min="-10" max="120" step="5">
+                                <input type="number" id="va-oi-4000" value="0" min="-10" max="120" step="5">
+                                <input type="number" id="va-oi-8000" value="0" min="-10" max="120" step="5">
+                            </div>
+                            <div class="input-row" data-ear="oi" data-via="vo">
+                                <label class="row-label label-oi">OI VO</label>
+                                <input type="number" id="vo-oi-250" value="0" min="-10" max="120" step="5">
+                                <input type="number" id="vo-oi-500" value="0" min="-10" max="120" step="5">
+                                <input type="number" id="vo-oi-1000" value="0" min="-10" max="120" step="5">
+                                <input type="number" id="vo-oi-2000" value="0" min="-10" max="120" step="5">
+                                <input type="number" id="vo-oi-3000" value="0" min="-10" max="120" step="5">
+                                <input type="number" id="vo-oi-4000" value="0" min="-10" max="120" step="5">
+                                <input type="number" id="vo-oi-8000" value="0" min="-10" max="120" step="5">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="ai-badge" id="ai-source-badge" style="display:none;">
+                        <span>🤖 Valores extraídos por IA</span>
+                    </div>
+                    <div class="btn-group">
+                        <button onclick="app.calculateResults()" class="btn-primary btn-large">📊 Calcular Resultados</button>
+                    </div>
+                </div>
+
+                <!-- Observations -->
+                <div class="glass-card section-card">
+                    <h3>📝 Observaciones</h3>
+                    <textarea id="observations" placeholder="Notas, comentarios o conclusiones para el informe..."></textarea>
+                </div>
+
+                <!-- Calculated results (shown after calculate) -->
+                <div id="calc-results" class="hidden">
+                    <!-- Results table -->
+                    <div class="glass-card section-card">
+                        <h3>📊 Tabla de Resultados</h3>
+                        <div class="table-scroll">
+                            <table id="audiometry-table">
+                                <thead>
+                                    <tr>
+                                        <th>Oído / Vía</th>
+                                        <th>250</th><th>500</th><th>1000</th><th>2000</th>
+                                        <th>3000</th><th>4000</th><th>8000</th>
+                                    </tr>
+                                </thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
+                        <div class="btn-group">
+                            <button onclick="app.copyTable()" class="btn-secondary">📋 Copiar Tabla</button>
+                        </div>
+                    </div>
+
+                    <!-- Audiogram -->
+                    <div class="glass-card section-card">
+                        <h3>📈 Audiograma</h3>
+                        <div id="audiogram-container" class="audiogram-wrapper"></div>
+                        <div class="btn-group">
+                            <button onclick="app.copyAudiogram()" class="btn-secondary">📋 Copiar Gráfica</button>
+                        </div>
+                    </div>
+
+                    <!-- Diagnosis summary -->
+                    <div class="glass-card section-card" id="diagnosis-summary"></div>
+                </div>
+            </section>
+
+            <!-- ===== PAGE 3: REPORT ===== -->
+            <section id="page-report" class="page">
+                <div class="page-header">
+                    <h2>Informes Clínicos</h2>
+                    <p class="page-subtitle">Informes estándar y narrativos generados con IA</p>
+                </div>
+
+                <!-- Basic Report -->
+                <div class="glass-card section-card">
+                    <h3>📋 Informe Básico</h3>
+                    <div id="basic-report-content" class="report-output">
+                        <p class="placeholder-text">Calcula los resultados primero para generar el informe básico.</p>
+                    </div>
+                    <div class="btn-group">
+                        <button onclick="app.copyBasicReport()" class="btn-secondary">📋 Copiar</button>
+                        <a href="https://www.protectedtext.com/drfabioalonso-5763" target="_blank" rel="noopener" class="btn-secondary">📤 Pegar en PC</a>
+                    </div>
+                </div>
+
+                <!-- Detailed Report -->
+                <div class="glass-card section-card">
+                    <h3>📊 Informe Detallado</h3>
+                    <div id="detailed-report-content" class="report-output">
+                        <p class="placeholder-text">Calcula los resultados primero para generar el informe detallado.</p>
+                    </div>
+                    <div class="btn-group">
+                        <button onclick="app.copyDetailedReport()" class="btn-secondary">📋 Copiar</button>
+                        <a href="https://www.protectedtext.com/drfabioalonso-5763" target="_blank" rel="noopener" class="btn-secondary">📤 Pegar en PC</a>
+                        <button onclick="app.printReport()" class="btn-secondary">🖨️ Imprimir</button>
+                    </div>
+                </div>
+
+                <!-- AI Narrative Report -->
+                <div class="glass-card section-card ai-section">
+                    <h3>🤖 Informe Narrativo IA</h3>
+                    <p class="section-hint">Genera un informe clínico profesional redactado por Gemini</p>
+                    <div id="ai-report-content" class="report-output">
+                        <p class="placeholder-text">Pulsa el botón para generar un informe narrativo con IA.</p>
+                    </div>
+                    <div class="btn-group">
+                        <button onclick="app.generateAIReport()" class="btn-primary btn-glow" id="generate-report-btn">
+                            <span class="btn-icon">🤖</span> Generar Informe con IA
+                        </button>
+                        <button onclick="app.copyAIReport()" class="btn-secondary">📋 Copiar</button>
+                        <a href="https://www.protectedtext.com/drfabioalonso-5763" target="_blank" rel="noopener" class="btn-secondary">📤 Pegar en PC</a>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ===== PAGE 4: HISTORY ===== -->
+            <section id="page-history" class="page">
+                <div class="page-header">
+                    <h2>Historial y Gestión</h2>
+                    <p class="page-subtitle">Registros guardados, comparación y exportación</p>
+                </div>
+
+                <!-- Save / Load -->
+                <div class="glass-card section-card">
+                    <h3>💾 Gestión de Registros</h3>
+                    <div class="btn-group">
+                        <button onclick="app.saveAudiometry()" class="btn-primary">💾 Guardar</button>
+                        <button onclick="app.resetApplication()" class="btn-secondary">🔄 Reiniciar</button>
+                        <button onclick="app.exportData()" class="btn-secondary">📤 Exportar</button>
+                        <label class="btn-secondary btn-file-label">
+                            📥 Importar
+                            <input type="file" id="import-file" accept=".json" hidden>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Saved Audiometries -->
+                <div class="glass-card section-card">
+                    <h3>📂 Audiometrías Guardadas</h3>
+                    <div class="form-group">
+                        <label for="saved-audiometries">Seleccionar registro:</label>
+                        <div class="select-row">
+                            <select id="saved-audiometries">
+                                <option value="">Seleccionar para cargar...</option>
+                            </select>
+                            <button onclick="app.loadSelectedAudiometry()" class="btn-tool">📂 Cargar</button>
+                            <button onclick="app.deleteSelectedAudiometry()" class="btn-danger">🗑️</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Comparison -->
+                <div class="glass-card section-card">
+                    <h3>🔄 Comparación de Audiometrías</h3>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="compare-1">Audiometría Basal:</label>
+                            <select id="compare-1"><option value="">Seleccionar...</option></select>
+                        </div>
+                        <div class="form-group">
+                            <label for="compare-2">Seguimiento:</label>
+                            <select id="compare-2"><option value="">Seleccionar...</option></select>
+                        </div>
+                    </div>
+                    <div class="btn-group">
+                        <button onclick="app.compareAudiometries()" class="btn-primary">🔄 Comparar</button>
+                    </div>
+                    <div id="comparison-container" class="hidden">
+                        <div class="comparison-graphs">
+                            <div class="comparison-graph">
+                                <h4>Basal</h4>
+                                <div id="comparison-audiogram-1"></div>
+                            </div>
+                            <div class="comparison-graph">
+                                <h4>Seguimiento</h4>
+                                <div id="comparison-audiogram-2"></div>
+                            </div>
+                        </div>
+                        <div id="comparison-report" class="report-output"></div>
+                        <div class="btn-group">
+                            <button onclick="app.copyComparisonReport()" class="btn-secondary">📋 Copiar Comparación</button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <!-- Bottom Navigation -->
+        <nav id="bottom-nav">
+            <button class="nav-item active" data-page="capture" id="nav-capture">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+                <span>Captura</span>
+            </button>
+            <button class="nav-item" data-page="results" id="nav-results">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 20V10"/><path d="M12 20V4"/><path d="M6 20v-6"/></svg>
+                <span>Resultados</span>
+            </button>
+            <button class="nav-item" data-page="report" id="nav-report">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+                <span>Informe</span>
+            </button>
+            <button class="nav-item" data-page="history" id="nav-history">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                <span>Historial</span>
+            </button>
+        </nav>
+    </div>
+
+    <!-- Settings Modal -->
+    <div id="settings-modal" class="modal-overlay hidden">
+        <div class="modal-content glass-card">
+            <div class="modal-header">
+                <h2>⚙️ Configuración</h2>
+                <button class="modal-close" onclick="app.closeSettings()">✕</button>
+            </div>
+            <div class="modal-body">
+                <!-- Backend selector -->
+                <div class="form-group">
+                    <label for="backend-select">🔌 Modo de Conexión</label>
+                    <select id="backend-select" onchange="app.onBackendChange()">
+                        <option value="cloud">☁️ Google AI Studio (Nube)</option>
+                        <option value="ondevice">📱 On-Device (WebGPU en tu móvil)</option>
+                        <option value="ollama">🖥️ Ollama (Servidor Local / Clínica)</option>
+                        <option value="custom">⚙️ Endpoint Personalizado (OpenAI compatible)</option>
+                    </select>
+                </div>
+
+                <!-- CLOUD settings -->
+                <div id="settings-cloud" class="backend-settings">
+                    <div class="form-group">
+                        <label for="api-key-input">API Key de Google AI Studio</label>
+                        <div class="input-password-row">
+                            <input type="password" id="api-key-input" placeholder="AIza...">
+                            <button onclick="app.toggleKeyVisibility()" class="btn-tool" id="toggle-key-btn">👁️</button>
+                        </div>
+                        <small class="form-hint">Obtén tu key gratis en <a href="https://aistudio.google.com" target="_blank" rel="noopener">aistudio.google.com</a></small>
+                    </div>
+                    <div class="form-group">
+                        <label for="model-select">Modelo</label>
+                        <select id="model-select">
+                            <option value="gemini-3.1-flash-lite-preview">Gemini 3.1 Flash-Lite ⚡ (Recomendado)</option>
+                            <option value="gemini-3-flash-preview">Gemini 3 Flash</option>
+                            <option value="gemini-3.1-pro-preview">Gemini 3.1 Pro (Máxima calidad)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- ON-DEVICE settings -->
+                <div id="settings-ondevice" class="backend-settings hidden">
+                    <div class="settings-info-box">
+                        <p>📱 <strong>On-Device</strong> ejecuta Gemini directamente en tu navegador usando WebGPU. Sin servidores, sin internet, máxima privacidad.</p>
+                    </div>
+                    <div class="form-group">
+                        <label for="ondevice-model-url">URL del modelo (.litertlm)</label>
+                        <input type="text" id="ondevice-model-url" placeholder="https://huggingface.co/.../gemini-nano-Web.litertlm" value="">
+                        <small class="form-hint">URL directa al archivo .litertlm desde HuggingFace o ruta local. Se descarga y cachea en el navegador.</small>
+                    </div>
+                    <div id="ondevice-status" class="settings-info-box" style="display:none;">
+                        <p id="ondevice-status-text">⏳ Cargando modelo...</p>
+                        <div class="ondevice-progress-bar"><div class="ondevice-progress-fill" id="ondevice-progress"></div></div>
+                    </div>
+                    <div class="btn-group">
+                        <button onclick="app.loadOnDeviceModel()" class="btn-secondary">📥 Descargar y Cargar Modelo</button>
+                    </div>
+                </div>
+
+                <!-- OLLAMA settings -->
+                <div id="settings-ollama" class="backend-settings hidden">
+                    <div class="settings-info-box">
+                        <p>🖥️ <strong>Ollama</strong> ejecuta modelos IA en tu propio servidor (PC de clínica o red local). Los datos nunca salen de tu red.</p>
+                    </div>
+                    <div class="form-group">
+                        <label for="ollama-url">URL del servidor Ollama</label>
+                        <input type="text" id="ollama-url" placeholder="http://localhost:11434" value="http://localhost:11434">
+                        <small class="form-hint">Dirección IP o hostname del PC con Ollama. Ej: http://192.168.1.50:11434</small>
+                    </div>
+                    <div class="form-group">
+                        <label for="ollama-model">Modelo en Ollama</label>
+                        <input type="text" id="ollama-model" placeholder="gemma3:27b" value="gemma3:27b">
+                        <small class="form-hint">Nombre tal como aparece en <code>ollama list</code>. Ej: gemma3:27b, llama3, mistral</small>
+                    </div>
+                </div>
+
+                <!-- CUSTOM settings -->
+                <div id="settings-custom" class="backend-settings hidden">
+                    <div class="settings-info-box">
+                        <p>⚙️ Cualquier API compatible con formato <strong>OpenAI</strong> (vLLM, LiteLLM, text-generation-webui, etc.)</p>
+                    </div>
+                    <div class="form-group">
+                        <label for="custom-url">URL del Endpoint</label>
+                        <input type="text" id="custom-url" placeholder="http://localhost:8000/v1/chat/completions">
+                        <small class="form-hint">Endpoint completo incluyendo /v1/chat/completions</small>
+                    </div>
+                    <div class="form-group">
+                        <label for="custom-api-key">API Key (opcional)</label>
+                        <input type="password" id="custom-api-key" placeholder="sk-...">
+                    </div>
+                    <div class="form-group">
+                        <label for="custom-model-name">Nombre del modelo</label>
+                        <input type="text" id="custom-model-name" placeholder="gemini-3.1-flash-lite-preview">
+                    </div>
+                </div>
+
+                <div id="api-status" class="api-status">
+                    <span class="status-dot" id="status-dot"></span>
+                    <span id="status-text">No configurado</span>
+                </div>
+                <div class="btn-group">
+                    <button onclick="app.saveSettings()" class="btn-primary">💾 Guardar</button>
+                    <button onclick="app.testAPIConnection()" class="btn-secondary">🔌 Probar Conexión</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Print Modal -->
+    <div id="print-modal" class="modal-overlay hidden">
+        <div class="modal-content glass-card">
+            <div class="modal-header">
+                <h2>🖨️ Imprimir Informe</h2>
+                <button class="modal-close" onclick="app.closePrintModal()">✕</button>
+            </div>
+            <div class="modal-body">
+                <div class="print-options">
+                    <label><input type="checkbox" id="print-patient-info" checked> Datos del Paciente</label>
+                    <label><input type="checkbox" id="print-observations" checked> Observaciones</label>
+                    <label><input type="checkbox" id="print-results-table" checked> Tabla de Resultados</label>
+                    <label><input type="checkbox" id="print-audiogram" checked> Audiograma</label>
+                    <label><input type="checkbox" id="print-basic-report" checked> Informe Básico</label>
+                    <label><input type="checkbox" id="print-detailed-report"> Informe Detallado</label>
+                    <label><input type="checkbox" id="print-ai-report"> Informe IA</label>
+                </div>
+                <div class="btn-group">
+                    <button onclick="app.executePrint()" class="btn-primary">🖨️ Imprimir</button>
+                    <button onclick="app.closePrintModal()" class="btn-secondary">Cancelar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/tasks-genai/genai_bundle.cjs" crossorigin="anonymous"></script>
+    <script src="script.js"></script>
+</body>
+
+</html>
