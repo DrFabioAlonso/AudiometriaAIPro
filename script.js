@@ -25,7 +25,8 @@ class GeminiAPIClient {
         this.apiKey = localStorage.getItem('gemma_api_key') || '';
         this.model = localStorage.getItem('gemma_model') || 'gemini-3.1-flash-lite-preview';
         // Auto-migrate from old defaults
-        if (['gemma-4-27b-it', 'gemma-4-12b-it', 'gemma-4-4b-it', 'gemma-4-26b-a4b-it'].includes(this.model)) {
+        const oldModels = ['gemma-4-27b-it', 'gemma-4-12b-it', 'gemma-4-4b-it', 'gemma-4-26b-a4b-it', 'gemma-4-31b-it', 'gemini-2.5-flash', 'gemini-2.5-flash-lite', 'gemini-2.5-pro'];
+        if (oldModels.includes(this.model)) {
             this.model = 'gemini-3.1-flash-lite-preview';
             localStorage.setItem('gemma_model', this.model);
         }
@@ -121,31 +122,28 @@ class GeminiAPIClient {
     }
 
     // --- ON-DEVICE (MediaPipe WebGPU) ---
-    async loadModel(modelUrl, onProgress) {
-        if (typeof LlmInference === 'undefined' && typeof self.LlmInference === 'undefined') {
-            // Try to access from MediaPipe tasks-genai bundle
-            const mp = self.FilesetResolver ? self : (self.mediapipe || {});
-            if (!mp.FilesetResolver) throw new Error('MediaPipe GenAI no disponible. Recarga la página.');
-            const genai = await mp.FilesetResolver.forGenAiTasks(
-                'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-genai@latest/wasm'
-            );
-            this.llmInference = await mp.LlmInference.createFromOptions(genai, {
-                baseOptions: { modelAssetPath: modelUrl },
-                maxTokens: 2048,
-                maxNumImages: 1
-            });
-        } else {
-            const LlmInferenceClass = self.LlmInference || self.mediapipe?.LlmInference;
-            const FilesetResolverClass = self.FilesetResolver || self.mediapipe?.FilesetResolver;
-            const genai = await FilesetResolverClass.forGenAiTasks(
-                'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-genai@latest/wasm'
-            );
-            this.llmInference = await LlmInferenceClass.createFromOptions(genai, {
-                baseOptions: { modelAssetPath: modelUrl },
-                maxTokens: 2048,
-                maxNumImages: 1
-            });
-        }
+    async _loadMediaPipeSDK() {
+        if (self.FilesetResolver && self.LlmInference) return; // Already loaded
+        return new Promise((resolve, reject) => {
+            const script = document.createElement('script');
+            script.src = 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-genai@latest/genai_bundle.js';
+            script.crossOrigin = 'anonymous';
+            script.onload = resolve;
+            script.onerror = () => reject(new Error('No se pudo cargar MediaPipe GenAI SDK. Comprueba tu conexión.'));
+            document.head.appendChild(script);
+        });
+    }
+
+    async loadModel(modelUrl) {
+        await this._loadMediaPipeSDK();
+        const genai = await self.FilesetResolver.forGenAiTasks(
+            'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-genai@latest/wasm'
+        );
+        this.llmInference = await self.LlmInference.createFromOptions(genai, {
+            baseOptions: { modelAssetPath: modelUrl },
+            maxTokens: 2048,
+            maxNumImages: 1
+        });
         this.onDeviceReady = true;
     }
 
